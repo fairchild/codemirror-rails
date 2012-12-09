@@ -123,7 +123,7 @@ CodeMirror.defineMode("clike", function(config, parserConfig) {
       if (style == "comment" || style == "meta") return style;
       if (ctx.align == null) ctx.align = true;
 
-      if ((curPunc == ";" || curPunc == ":") && ctx.type == "statement") popContext(state);
+      if ((curPunc == ";" || curPunc == ":" || curPunc == ",") && ctx.type == "statement") popContext(state);
       else if (curPunc == "{") pushContext(state, stream.column(), "}");
       else if (curPunc == "[") pushContext(state, stream.column(), "]");
       else if (curPunc == "(") pushContext(state, stream.column(), ")");
@@ -133,7 +133,7 @@ CodeMirror.defineMode("clike", function(config, parserConfig) {
         while (ctx.type == "statement") ctx = popContext(state);
       }
       else if (curPunc == ctx.type) popContext(state);
-      else if (ctx.type == "}" || ctx.type == "top" || (ctx.type == "statement" && curPunc == "newstatement"))
+      else if (((ctx.type == "}" || ctx.type == "top") && curPunc != ';') || (ctx.type == "statement" && curPunc == "newstatement"))
         pushContext(state, stream.column(), "statement");
       state.startOfLine = false;
       return style;
@@ -166,7 +166,19 @@ CodeMirror.defineMode("clike", function(config, parserConfig) {
 
   function cppHook(stream, state) {
     if (!state.startOfLine) return false;
-    stream.skipToEnd();
+    for (;;) {
+      if (stream.skipTo("\\")) {
+        stream.next();
+        if (stream.eol()) {
+          state.tokenize = cppHook;
+          break;
+        }
+      } else {
+        stream.skipToEnd();
+        state.tokenize = null;
+        break;
+      }
+    }
     return "meta";
   }
 
